@@ -87,6 +87,7 @@ def srrc_impulse_response( Fs=21.4e9, delay=40, os=2, roll_off=0.25,  plot = Tru
     """
     Ts = 1 / Fs # the sampling rate
     N = delay * os 
+    print(f"N == {N}")
     t_vect = torch.arange(-N, N + 1, 1, dtype=torch.int32) * Ts / os # the total length of the filter
     h_rrc = torch.zeros(t_vect.shape)
     s = 0
@@ -120,7 +121,7 @@ def srrc_impulse_response( Fs=21.4e9, delay=40, os=2, roll_off=0.25,  plot = Tru
 
 
 
-def get_impulse_response(choice = 'srrc', delay=50, plot = False) :
+def get_impulse_response(choice = 'srrc', delay = 50, plot = False) :
     # omega = torch.pi*((1+self.rolloff)/self.os)
     # zeta = 1e-14
     if choice == 'srrc' :
@@ -141,9 +142,9 @@ def get_trunc(choice, trunc = 200):
     if choice == 'fir+srrc':
         cut = int(get_impulse_response( 'fir' ) [ 1 ] - 1 + 2* (get_impulse_response( 'srrc' ) [ 1 ] - 1) + 2*trunc)
     elif choice == 'fir' : 
-        cut = int((get_impulse_response( 'fir' ) [ 1 ] - 1))
+        cut = int(2*(get_impulse_response( 'fir' ) [ 1 ]))
     elif choice =='srrc':
-        cut = int(2* (get_impulse_response( 'srrc' ) [ 1 ] - 1))
+        cut = int(get_impulse_response( 'srrc' ) [ 1 ])
     elif choice == 'param':
         cut = int(
             get_impulse_response('param')[1] - 1 + (get_impulse_response('srrc')[1] - 1) + 2 * trunc)
