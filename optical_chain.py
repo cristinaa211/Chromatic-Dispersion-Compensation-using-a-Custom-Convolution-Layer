@@ -1,18 +1,15 @@
 import torch 
-import numpy as np
 import matplotlib
-matplotlib.get_backend()
-from chain_layers import Processors, Generator, Modulators, Sampling, Display_tools, Noise, Filters, Transient_remover
-from chain_layers import IQ_imbalance , Phase_noise
-from filter_operations import get_impulse_response, get_trunc
+from chain_layers import Processors, Generator, Modulators, Sampling, Display_tools
+from filters_tools import Filters, Transient_remover
+from impairements import CD_impairement, IQ_imbalance, Noise, Phase_noise, CarrierFreqOffset
+from filters_tools.filter_operations import get_impulse_response, get_trunc
 
+matplotlib.get_backend()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-
-
 class OpticalChain:
-    def __init__(self, Nb, M, mod_type, BW, ovs_factor, wavelength, Fs, SNR, plot):
+    def __init__(self, Nb, M, mod_type, BW, ovs_factor, wavelength, Fs, SNR, fiber_length, plot):
         self.Nb = Nb 
         self.M = M
         self.mod_type = mod_type
@@ -21,8 +18,8 @@ class OpticalChain:
         self.wavelength = wavelength
         self.Fs = Fs
         self.SNR = SNR
+        self.fiber_length = fiber_length
         self.plot = plot
-        np.random.choice(42)
         self.optical_chain = Processors.Chain()
         
     def emitter_side(self):
@@ -75,37 +72,62 @@ class OpticalChain:
         # self.optical_chain.add_processor(Transient_remover.Transient_remover(N))
 
     def add_iq_imbalance(self, alpha_db, theta_deg):
-        """Adds IQ imbalance in the optical chain"""
+        """Adds IQ imbalance in the optical chain
+        Args:
+            alpha_db  : IQ imbalance amplitude mismatch coefficient
+            theta_deg : IQ imbalance phase mismatch coefficient 
+            """
         self.optical_chain.add_processor(IQ_imbalance.IQ_imbalance(alpha_db, theta_deg))
 
+    def add_carrier_frequency_offset(self, delta = 2e9):
+        """Adds Carrier Frequency Offset Impairement
+        Args:
+            delta (int): Carrier Frequency Offset impact, default to 2e9
+        """
+        self.optical_chain.add_processor(CarrierFreqOffset.CarrierFrequencyOffset(delta=delta, Fs= self.Fs))
+
     def add_phase_noise(self, df = 1e5, name = "Phase Noise" ):
-        """Adds Laser Phase Noise in the optical chain"""
+        """Adds Laser Phase Noise in the optical chain
+        Args:
+            df : Laser phase noise - laser linewidth"""
         self.optical_chain.add_processor(Phase_noise.LaserPhaseNoise(fs = self.Fs, delta_f = df, name = name))
 
+    def add_chromatic_dispersion(self, D):
+        """Adds Chromatic Dispersion
+        Args:
+            D  : Chromatic dispersion parameter, default = 17e-3"""
+        self.optical_chain.add_processor(CD_impairement.ChromaticDispersion(D, self.fiber_length , self.wavelength, self.Fs, name = "ChromaticDispersion" ))
+
     def forward(self):
+        #EMITTER SIDE
         self.emitter_side()
         self.add_filters('srrc', name = 'SSRC Filter Tx')
         self.add_phase_noise(name = "Phase Noise Tx")
         self.add_iq_imbalance(alpha_db=2, theta_deg=20)
+        #CHANNEL
+        self.add_chromatic_dispersion(D = 17e-3)
         self.add_noise()
+        self.add_carrier_frequency_offset()
+        #RECEIVER SIDE
         self.add_phase_noise(name="Phase Noise Rx")
         self.add_iq_imbalance(alpha_db=1, theta_deg=10)
         self.add_filters('srrc', name='SSRC Filter Rx')
         self.receiver_side()
-        self.optical_chain.forward()
+        self.optical_chain.forward().to(device)
         
 
 
 if __name__ == "__main__":
     parameters = {'Nb' : 600 , 'type' : 'QAM', 'M' : 16,
-                  'BW' : 10e9, 'ovs_factor' : 2,
+                  'BW' : 10e9, 'ovs_factor' : 2, 'fiber_length' : 4000,
                   'Fs' : 21.4e9, 'wavelength' : 1553e-9,
                   'SNR' : 20,
                   'plot' : True
                   }
     chain = OpticalChain(
-                        Nb = parameters['Nb'], mod_type=parameters['type'], M = parameters['M'],
-                        BW = parameters['BW'], ovs_factor=parameters['ovs_factor'],
-                        wavelength= parameters['wavelength'], Fs=parameters['Fs'], SNR=parameters['SNR'],
-                        plot=parameters['plot'] )
+                        Nb = parameters['Nb'], BW = parameters['BW'], 
+                        mod_type=parameters['type'], M = parameters['M'],
+                        fiber_length=parameters['fiber_length'], ovs_factor=parameters['ovs_factor'], 
+                        SNR=parameters['SNR'], wavelength= parameters['wavelength'], 
+                        Fs=parameters['Fs'], plot=parameters['plot'] )
     chain.forward()

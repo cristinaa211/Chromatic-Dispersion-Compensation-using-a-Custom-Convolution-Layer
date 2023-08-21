@@ -2,7 +2,7 @@ import torch
 import scipy
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd 
+
 
 def fir_cd_comp_imp_resp( Fs = 21.4e9,D = 17e-3,Lambda=1553e-9, L=4000, 
                          omega_1 =-torch.pi , omega_2 = torch.pi, 

@@ -2,6 +2,8 @@ import torch
 from chain_layers.Processors import Processor
 from torch import nn
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 class LaserPhaseNoise(nn.Module,Processor):
 
     def __init__(self,fs, delta_f=0, K = 10 , name = 'Phase Noise' ):
@@ -20,8 +22,8 @@ class LaserPhaseNoise(nn.Module,Processor):
         theta = torch.cumsum(fi_s, dim = 0)
         theta = torch.flatten(theta)
         diag = torch.exp(theta).type(torch.float16)
-        matrix = torch.diag(diag)
-        I = torch.eye(int(self.K))
+        matrix = torch.diag(diag).to(device)
+        I = torch.eye(int(self.K)).to(device)
         phi_theta = torch.kron(matrix,I)
         return phi_theta
 
@@ -29,6 +31,6 @@ class LaserPhaseNoise(nn.Module,Processor):
         N = input_data.size(1)  
         torch.random.seed()
         pn = self.laser_phase_noise(N)
-        output_data = pn * input_data
+        output_data = pn * input_data.to(device)
         # # output_data = torch.matmul(pn, input_data)
         return output_data

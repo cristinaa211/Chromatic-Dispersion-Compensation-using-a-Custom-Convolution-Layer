@@ -1,6 +1,7 @@
 import torch 
 from chain_layers.Processors import Processor
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class Filter_composed(Processor):
@@ -16,7 +17,7 @@ class Filter_composed(Processor):
         in_data = torch.flatten(data)
         in_data = torch.reshape(in_data, (1, 1, len(in_data)))
         if torch.is_complex(data):
-            x_r, x_i = torch.real(in_data), torch.imag(in_data)
+            x_r, x_i = torch.real(in_data).to(device), torch.imag(in_data).to(device)
         else:
             x_r = data
             x_i = torch.zeros(len(data))
@@ -30,9 +31,7 @@ class Filter_composed(Processor):
             y_ii = torch.nn.functional.conv1d(x_i, w_i, b_i, padding=M)
             y1 = (y_rr - y_ii).float()
             y2 = (y_ir + y_ri).float()
-
         else:
-
             y1 = torch.nn.functional.conv1d(x_r, h, padding=N - 1)
             y2 = torch.nn.functional.conv1d(x_i, h, padding=N - 1)
 
@@ -44,7 +43,7 @@ class Filter_composed(Processor):
         # df = pd.DataFrame(himp)
         # df.to_csv('savory_2.csv', index=False)
         himp = torch.flatten(himp)
-        return himp
+        return himp.to(device)
 
     def forward(self, input_data):
         if self.impulse_response2 == None:
@@ -52,8 +51,7 @@ class Filter_composed(Processor):
         else:
             output_data = self.apply_filter(input_data, self.conv_himp())
         output_data = torch.squeeze(output_data, dim=1)
-
-        return output_data
+        return output_data.to(device)
 
 class Filter(Processor):
 
@@ -63,9 +61,9 @@ class Filter(Processor):
         self.name = name
 
     def apply_filter(self, data, h_imp, bias=None):
-        h = torch.reshape(h_imp, (1, 1, len(h_imp)))
+        h = torch.reshape(h_imp, (1, 1, len(h_imp))).to(device)
         in_data = torch.reshape(torch.flatten(data), (1, 1, len(torch.flatten(data))))
-        x_r, x_i = torch.real(in_data), torch.imag(in_data)
+        x_r, x_i = torch.real(in_data).to(device), torch.imag(in_data).to(device)
         padding = len(self.impulse_response)- 1
         if torch.is_complex(h):
             w_r, w_i = torch.real(h), torch.imag(h)
