@@ -14,12 +14,10 @@ class CarrierFrequencyOffset(nn.Module,Processor):
         self.parameteres = nn.Parameter(self.w_delta)
 
     def forward(self,input_data):
-        input_data = torch.flatten(input_data).to(device)
-        N = len(input_data)
-        input_data = torch.reshape(input_data,(len(input_data),1))
+        N = input_data.shape[1]
         n_vect = torch.arange(0,N,1)
         phi = torch.tensor([torch.exp(1j*2*torch.pi*n*self.w_delta/self.Fs) for n in n_vect]).to(device)
         phi_matrix = torch.diag(phi).to(device)
-        output_data = torch.matmul(phi_matrix,input_data).to(device)
+        output_data = torch.matmul(input_data,phi_matrix).to(device)
         return output_data
 

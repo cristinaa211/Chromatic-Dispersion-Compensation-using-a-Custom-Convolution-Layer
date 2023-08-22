@@ -1,6 +1,7 @@
 import torch
 import scipy
 import numpy as np
+import pandas as pd 
 import matplotlib.pyplot as plt
 
 
@@ -128,6 +129,7 @@ def get_impulse_response(choice = 'srrc', delay = 50, plot = False) :
         h_srrc = srrc_impulse_response (delay = delay, plot=plot )
         N_srrc = len ( h_srrc )
         return h_srrc, N_srrc
+    
     elif choice == 'fir' :
         h_fir = fir_cd_comp_imp_resp (zeta = 0, plot=plot )
         N_fir = len ( h_fir )
@@ -138,16 +140,18 @@ def get_impulse_response(choice = 'srrc', delay = 50, plot = False) :
     #     dff = torch.flatten(torch.tensor(dff.to_numpy(dtype=complex), dtype=torch.complex64))
     #     return dff, len(dff)
 
-def get_trunc(choice, trunc = 200):
+def get_trunc(choice):
+    fir_filter_order = get_impulse_response( 'fir' ) [ 1 ] -1
+    srrc_filter_ofer = get_impulse_response( 'srrc' ) [ 1 ] -1 
     if choice == 'fir+srrc':
-        cut = int(get_impulse_response( 'fir' ) [ 1 ] - 1 + 2* (get_impulse_response( 'srrc' ) [ 1 ] - 1) + 2*trunc)
+        cut = fir_filter_order + 2*srrc_filter_ofer 
     elif choice == 'fir' : 
-        cut = int(2*(get_impulse_response( 'fir' ) [ 1 ]))
+        cut = fir_filter_order
     elif choice =='srrc':
-        cut = int(get_impulse_response( 'srrc' ) [ 1 ])
+        cut = 2*srrc_filter_ofer
     elif choice == 'param':
         cut = int(
-            get_impulse_response('param')[1] - 1 + (get_impulse_response('srrc')[1] - 1) + 2 * trunc)
+            get_impulse_response('param')[1] - 1 + srrc_filter_ofer)
     return cut
     
 
