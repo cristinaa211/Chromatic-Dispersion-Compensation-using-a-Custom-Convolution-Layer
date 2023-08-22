@@ -30,7 +30,7 @@ class OpticalChain:
         self.optical_chain.add_processor(Generator.Symbols_Generator(M=self.M, N_row=1, N_col=self.Nb, name='generator'))
         self.optical_chain.add_processor(Processors.Recorder(name="input"))
         self.optical_chain.add_processor(Modulators.Modulator(M=self.M, normalized=True)) 
-        self.optical_chain.add_processor(Processors.Recorder(name="symbols_in"))  
+        self.optical_chain.add_processor(Processors.Recorder(name="targets"))  
         self.optical_chain.add_processor(Sampling.Upsampler_zero(os=self.ovs_factor))  
 
     def receiver_side(self):
@@ -55,7 +55,6 @@ class OpticalChain:
     def add_filters(self, filter_choice, name):
         """Adds a filter in the optical chain
         filter_choise = 'srrc' means it adds a Squared Raised Root Cosine filter"""
-        N = get_trunc(filter_choice)
         impulse_response = get_impulse_response(choice = filter_choice)[0]
         self.optical_chain.add_processor(Filters.Filter(impulse_response, name = name))
 
@@ -66,7 +65,6 @@ class OpticalChain:
         self.optical_chain.add_processor(Filters.FilterComposed(fir_impulse_response, srrc_impulse_response))
 
     def add_parametric_layer(self, version):
-        N = get_trunc("fir+srrc")
         self.optical_chain.add_processor(SavoryFilter.ParametricConvLayer(version))
         
 
@@ -103,11 +101,10 @@ class OpticalChain:
 
 
     def get_input_output(self):
-        input_data = getattr(self.optical_chain.input, 'data')
-        output_data = getattr(self.optical_chain.output, 'data')
-        symb_input = getattr(self.optical_chain.symbols_in,'data')
-        symb_output = getattr(self.optical_chain.symbols_out,'data')
-        return input_data, output_data, symb_input, symb_output
+        input_data = getattr(self.optical_chain.input, 'data').cpu().numpy()
+        input_net =  getattr(self.optical_chain.input_net, 'data').cpu().numpy()
+        targets = getattr(self.optical_chain.targets, 'data').cpu().numpy()
+        return input_data, input_net, targets
     
     def simulate_chain(self):
         #EMITTER SIDE
@@ -123,11 +120,13 @@ class OpticalChain:
         # self.add_carrier_frequency_offset()
         #RECEIVER SIDE
         #--------------------------------------------------
-        self.add_savory_filter()
+        # self.add_savory_filter()
+        self.optical_chain.add_processor(Processors.Recorder(name="input_net"))
+        self.add_parametric_layer(version=1)
         # self.add_phase_noise(name="Phase Noise Rx")
         # self.add_iq_imbalance(alpha_db=1, theta_deg=10)
         # self.add_filters('srrc', name='SSRC Filter Rx')
-        self.add_transient_remover("fir+srrc")
+        self.add_transient_remover("param")
         self.receiver_side()
         self.optical_chain.forward().to(device)
 
@@ -140,5 +139,5 @@ def simulate_chain_get_data(parameters):
                         SNR=parameters['SNR'], wavelength= parameters['wavelength'], 
                         Fs=parameters['Fs'], plot=parameters['plot'] )
     chain.simulate_chain()
-    input_data, output_data, symb_input, symb_output = chain.get_input_output()
-    return input_data, output_data, symb_input, symb_output    
+    input_data, input_net, targets = chain.get_input_output()
+    return  input_data, input_net, targets  

@@ -33,5 +33,5 @@ class ChromaticDispersion(nn.Module, Processor):
         fft_output = H * fft_input
         # Time domain
         output_data = torch.fft.ifft(fft_output)
+        output_data = output_data.unsqueeze(dim = 0)
         return output_data
-#

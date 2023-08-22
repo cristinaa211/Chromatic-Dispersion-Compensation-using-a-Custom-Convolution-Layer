@@ -3,7 +3,7 @@ import scipy
 import numpy as np
 import pandas as pd 
 import matplotlib.pyplot as plt
-
+from filters_tools.Filters import apply_filter
 
 def fir_cd_comp_imp_resp( Fs = 21.4e9,D = 17e-3,Lambda=1553e-9, L=4000, 
                          omega_1 =-torch.pi , omega_2 = torch.pi, 
@@ -74,7 +74,7 @@ def fir_cd_comp_imp_resp( Fs = 21.4e9,D = 17e-3,Lambda=1553e-9, L=4000,
         plt.show()
     return h_hat
 
-def srrc_impulse_response( Fs=21.4e9, delay=40, os=2, roll_off=0.25,  plot = True):
+def srrc_impulse_response( Fs=21.4e9, delay=50, os=2, roll_off=0.25,  plot = True):
     """Creates a Square Root Raised Cosine Filter 
     Args:
         Fs (float, optional): the sampling frequency. Defaults to 21.4e9.
@@ -88,7 +88,6 @@ def srrc_impulse_response( Fs=21.4e9, delay=40, os=2, roll_off=0.25,  plot = Tru
     """
     Ts = 1 / Fs # the sampling rate
     N = delay * os 
-    print(f"N == {N}")
     t_vect = torch.arange(-N, N + 1, 1, dtype=torch.int32) * Ts / os # the total length of the filter
     h_rrc = torch.zeros(t_vect.shape)
     s = 0
@@ -126,23 +125,22 @@ def get_impulse_response(choice = 'srrc', delay = 50, plot = False) :
     # omega = torch.pi*((1+self.rolloff)/self.os)
     # zeta = 1e-14
     if choice == 'srrc' :
-        h_srrc = srrc_impulse_response (delay = delay, plot=plot )
-        N_srrc = len ( h_srrc )
-        return h_srrc, N_srrc
-    
+        coeff_filter = srrc_impulse_response (delay = delay, plot=plot )
+        order = len ( coeff_filter )
+
     elif choice == 'fir' :
-        h_fir = fir_cd_comp_imp_resp (zeta = 0, plot=plot )
-        N_fir = len ( h_fir )
-        return h_fir, N_fir
+        coeff_filter = fir_cd_comp_imp_resp (plot=plot )
+        order = len ( coeff_filter )
     
-    # elif choice == 'param':
-    #     dff = pd.read_csv('{}'.format(h_param))
-    #     dff = torch.flatten(torch.tensor(dff.to_numpy(dtype=complex), dtype=torch.complex64))
-    #     return dff, len(dff)
+    elif choice == 'param':
+        coeff_filter = export_optmized_filter()
+        order = len(coeff_filter)
+    return coeff_filter, order
 
 def get_trunc(choice):
     fir_filter_order = get_impulse_response( 'fir' ) [ 1 ] -1
     srrc_filter_ofer = get_impulse_response( 'srrc' ) [ 1 ] -1 
+    optimized_filter = get_impulse_response('param')[1] - 1
     if choice == 'fir+srrc':
         cut = fir_filter_order + 2*srrc_filter_ofer 
     elif choice == 'fir' : 
@@ -150,10 +148,33 @@ def get_trunc(choice):
     elif choice =='srrc':
         cut = 2*srrc_filter_ofer
     elif choice == 'param':
-        cut = int(
-            get_impulse_response('param')[1] - 1 + srrc_filter_ofer)
+        cut = optimized_filter + srrc_filter_ofer
     return cut
-    
+
+def export_optmized_filter(filename = None, plot = False):
+    impulse_response1 = fir_cd_comp_imp_resp(Fs = 21.4e9,D = 17e-3,Lambda=1553e-9, L=4000, 
+                            omega_1 =-torch.pi , omega_2 = torch.pi, zeta = 1e-14, Nc = None, plot=False)
+    impulse_response2 = srrc_impulse_response(Fs=21.4e9, delay=10, os=2, roll_off=0.25, plot = False)
+    himp = apply_filter(impulse_response1, impulse_response2)
+    if plot == True:
+        real_h = torch.flatten(torch.real(himp).cpu())
+        imag_h = torch.flatten(torch.imag(himp).cpu())
+        abs_h = torch.flatten(torch.abs(himp).cpu())
+        fig, axes = plt.subplots(3)
+        axes[0].plot(real_h)
+        axes[0].set(xlabel='n_th tap', ylabel='Magnitude')
+        axes[0].set_title('Real parts of h_hat')
+        axes[1].plot(imag_h)
+        axes[1].set(xlabel='n_th tap', ylabel='Magnitude')
+        axes[1].set_title('Imaginary parts of h_hat')
+        axes[2].plot(abs_h)
+        axes[2].set(xlabel='n_th tap', ylabel='Magnitude')
+        axes[2].set_title('Absolute values of h_hat')
+        plt.show()
+        df = pd.DataFrame(himp.cpu())
+        df.to_csv(f'./filters_tools/{filename}.csv', index=False)
+    himp = torch.flatten(himp).cpu()
+    return himp
 
 if __name__ == "__main__":
     fir_cd_comp_imp_resp(Fs = 21.4e9,D = 17e-3,Lambda=1553e-9, L=4000, 

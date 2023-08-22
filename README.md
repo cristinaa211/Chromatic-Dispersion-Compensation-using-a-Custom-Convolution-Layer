@@ -4,7 +4,7 @@ The purpose of this repository is to present a method for chromatic dispersion c
 
 **The optical communication chain composition**
 
-THe emitter side of the chain contains a data generator, a data modulator, an upsampler and a Squared Root Raised Cosine Filter. The channels adds noise and chromatic dispersion to the transmitted signal. In the receiver side there is the filter proposed by the paper, a transient remover for removing the filter's delays, a downsampler, and a data demodulator. The output data will be compared to the input data so that Bit Error Rate is computed for performance monitoring. The parameters are the following: sample frequency = 21.4GHz, over sampling factor = 2, fiber's chromatic dispersion parameter = 17-e3, the wavelength = 1553 nm, the fiber's length = 4km. The signal to noise ratio is 20dBm.  
+THe emitter side of the chain contains a data generator, a data modulator, an upsampler and a Squared Root Raised Cosine Filter (SRRC). The channels adds noise and chromatic dispersion to the transmitted signal. In the receiver side there is the filter proposed by the paper, a transient remover for removing the filter's delays, a downsampler, and a data demodulator. The output data will be compared to the input data so that Bit Error Rate is computed for performance monitoring. The parameters are the following: sample frequency = 21.4GHz, over sampling factor = 2, fiber's chromatic dispersion parameter = 17-e3, the wavelength = 1553 nm, the fiber's length = 4km. The signal to noise ratio is 20dBm.  
 
 ![Alt text](image.png)
 
@@ -17,8 +17,12 @@ THe emitter side of the chain contains a data generator, a data modulator, an up
 
 
 **The optimized filter for compensating the Chromatic Dispersion**
+ 
+ The Filter proposed in the paper :
 
 ![Alt text](image-1.png)
 
 
+which will be convoluted with a SRRC filter:
 
+![Alt text](image-4.png)
