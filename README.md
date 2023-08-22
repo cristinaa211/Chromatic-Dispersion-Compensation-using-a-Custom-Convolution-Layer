@@ -9,11 +9,11 @@ THe emitter side of the chain contains a data generator, a data modulator, an up
 ![Alt text](image.png)
 
 **The data is transmitted using a M-QAM modulation type. The received constellation in an ideal environment is given below** 
-![Alt text](figures/perfect_constellation.png)
+![Alt text](perfect_constellation.png)
 
 **The effect of the Chromatic Dispersion on the received constellation**
 
-![Alt text](figures/cd.png)
+![Alt text](image-2.png)
 
 
 **The optimized filter for compensating the Chromatic Dispersion**
