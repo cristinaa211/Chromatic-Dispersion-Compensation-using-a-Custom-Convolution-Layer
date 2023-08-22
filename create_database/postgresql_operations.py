@@ -69,7 +69,7 @@ def  import_data_to_postgresql(data, table_name, database_config):
 
         
 def extract_signal_db(table_name, column, database_config):
-    query = f"""SELECT {table_name} FROM PUBLIC.{column}  LIMIT 1;"""
+    query = f"""SELECT {column} FROM PUBLIC.{table_name}  LIMIT 1;"""
     headers, data = read_table_postgresql(table_name=table_name,database_config= database_config, limit = 1, query = query)
     return headers, data
 
