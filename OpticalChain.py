@@ -1,8 +1,9 @@
 from chain_layers import Processors, Generator, Modulators, Sampling, Display_tools
-from filters_tools import Filters, Transient_remover, SavoryFilter
+from filters_tools import Filters, Transient_remover
 from impairements import CD_impairement, IQ_imbalance, Noise, Phase_noise, CarrierFreqOffset
 from filters_tools.filter_operations import get_impulse_response, get_trunc
 import torch 
+from models.model_layers import ParametricConvLayer
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -65,7 +66,7 @@ class OpticalChain:
         self.optical_chain.add_processor(Filters.FilterComposed(fir_impulse_response, srrc_impulse_response))
 
     def add_parametric_layer(self, version):
-        self.optical_chain.add_processor(SavoryFilter.ParametricConvLayer(version))
+        self.optical_chain.add_processor(ParametricConvLayer(version))
         
 
     def add_iq_imbalance(self, alpha_db, theta_deg):

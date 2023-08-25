@@ -3,7 +3,7 @@ import numpy as np
 from postgresql_operations import import_data_to_postgresql
 
 
-def create_database(snr_range, parameters, no_trials, database_config):
+def create_dataset(snr_range, parameters, no_trials, database_config):
     """Generates data in the optical chain and loads it in the database"""
     dataset = []
     for snr in snr_range:
