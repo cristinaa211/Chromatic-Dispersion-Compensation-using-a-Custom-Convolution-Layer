@@ -8,7 +8,8 @@ from models.model_layers import ParametricConvLayer
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class OpticalChain:
-    def __init__(self, Nb, M, mod_type, ovs_factor, wavelength, Fs, SNR, fiber_length, plot):
+    def __init__(self,order, Nb, M, mod_type, ovs_factor, wavelength, Fs, SNR, fiber_length, plot):
+        self.order = order
         self.Nb = Nb 
         self.M = M
         self.mod_type = mod_type
@@ -47,7 +48,7 @@ class OpticalChain:
         if self.plot == True:
             self.optical_chain.add_processor(Display_tools.Scope(type='scatter'))
         self.optical_chain.add_processor(Modulators.Demodulator(M=self.M,  normalized=True))
-        self.optical_chain.add_processor(Processors.Recorder(name="output"))
+        self.optical_chain.add_processor(Processors.Recorder(name="output_net"))
         
     def add_noise(self):
         """Adds Gaussian Noise"""
@@ -102,43 +103,96 @@ class OpticalChain:
 
 
     def get_input_output(self):
-        input_data = getattr(self.optical_chain.input, 'data').cpu().numpy()
-        input_net =  getattr(self.optical_chain.input_net, 'data').cpu().numpy()
-        targets = getattr(self.optical_chain.targets, 'data').cpu().numpy()
-        return input_data, input_net, targets
+        input_data = getattr(self.optical_chain.input, 'data').cpu()
+        input_net =  getattr(self.optical_chain.input_net, 'data').cpu()
+        targets = getattr(self.optical_chain.targets, 'data').cpu()
+        output_data = getattr(self.optical_chain.output_net, "data").cpu()
+        return input_data, input_net, targets, output_data
     
     def simulate_chain(self):
         #EMITTER SIDE
         #--------------------------------------------------
         self.emitter_side()
         self.add_filters('srrc', name = 'SSRC Filter Tx')
-        # self.add_phase_noise(name = "Phase Noise Tx")
-        # self.add_iq_imbalance(alpha_db=2, theta_deg=20)
+        if 'pn_tx' in self.order:
+            self.add_phase_noise(name = "Phase Noise Tx")
+        if 'iq_tx' in self.order:
+            self.add_iq_imbalance(alpha_db=2, theta_deg=20)
         #CHANNEL
         #--------------------------------------------------
-        self.add_chromatic_dispersion(D = 17e-3)
+        if 'cd' in self.order : 
+            self.add_chromatic_dispersion(D = 17e-3)
         self.add_noise()
-        # self.add_carrier_frequency_offset()
+        if 'cfo' in self.order : 
+            self.add_carrier_frequency_offset()
         #RECEIVER SIDE
         #--------------------------------------------------
-        # self.add_savory_filter()
+        if 'composed_filter' in self.order:
+            self.add_savory_filter()
         self.optical_chain.add_processor(Processors.Recorder(name="input_net"))
-        self.add_parametric_layer(version=1)
-        # self.add_phase_noise(name="Phase Noise Rx")
-        # self.add_iq_imbalance(alpha_db=1, theta_deg=10)
-        # self.add_filters('srrc', name='SSRC Filter Rx')
+        if 'eval' in self.order:
+            self.add_evaluation_model()
+        if "optimized_filter" in self.order:
+            self.add_parametric_layer(version=1)
+        if 'pn_rx' in self.order:
+            self.add_phase_noise(name="Phase Noise Rx")
+        if "iq_rx" in self.order:
+            self.add_iq_imbalance(alpha_db=1, theta_deg=10)
+        if 'srrc' in self.order:
+            self.add_filters('srrc', name='SSRC Filter Rx')
         self.add_transient_remover("param")
         self.receiver_side()
         self.optical_chain.forward().to(device)
 
 
 def simulate_chain_get_data(parameters):
-    chain = OpticalChain(
-                        Nb = parameters['Nb'],
+    """_summary_
+    Example of parameters:
+    parameters = {"oder': ['cd', 'optimized_filter'], 'Nb' : 1000 , 'type' : 'QAM', 'M' : 16,
+                'ovs_factor' : 2, 'fiber_length' : 4000,
+                'Fs' : 21.4e9, 'wavelength' : 1553e-9,
+                'SNR' : 20,
+                'plot' : False
+                }
+    Args:
+        parameters (dict): the parameters of the Optical Chain
+
+    Returns:
+        _type_: _description_
+    """
+    chain = OpticalChain(order = parameters['order'], Nb = parameters['Nb'],
                         mod_type=parameters['type'], M = parameters['M'],
                         fiber_length=parameters['fiber_length'], ovs_factor=parameters['ovs_factor'], 
                         SNR=parameters['SNR'], wavelength= parameters['wavelength'], 
                         Fs=parameters['Fs'], plot=parameters['plot'] )
     chain.simulate_chain()
-    input_data, input_net, targets = chain.get_input_output()
-    return  input_data, input_net, targets  
+    input_data, input_net, targets, output_data = chain.get_input_output()
+    return  input_data, input_net, targets , output_data
+
+
+import torch.nn as nn
+import pytorch_lightning as pl
+class Symbol_detection(pl.LightningModule, nn.Module, Modulators.Modulator):
+
+    def __init__(self,  M = 16):
+        super().__init__()
+        self.M = M
+        self.normalized = True
+        constellation = self.constellation().to(device)      
+        self.alphabet_real = torch.real(constellation).to(device)
+        self.alphabet_imag = torch.imag(constellation).to(device)
+        l = self.alphabet_real.size()
+        self.sigma = nn.Parameter(torch.ones(l)*0.3, requires_grad=True)
+
+    def forward(self, input_data):
+        output_data = []
+        for sample in input_data:
+            x_0 = torch.real(sample).t().to(device)
+            x_1 = torch.imag(sample).t().to(device)
+            error =(x_0[:,None] - self.alphabet_real[None,:])**2 +  (x_1[:, None] - self.alphabet_imag[None, :]) ** 2
+            detected_out = -(1/self.sigma**2).to(device) * error.to(device)
+            output_data.append(detected_out)
+        output_data = torch.stack(output_data)
+        return output_data
+
+

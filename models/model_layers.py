@@ -1,76 +1,81 @@
+from typing import Any
 import pytorch_lightning as pl
 import torch 
 from chain_layers.Processors import Processor
 import torch.nn as nn 
 import pandas as pd 
 import torchmetrics 
+from chain_layers.Modulators import Demodulator, Modulator
+import os
 
 device = 'cuda' if torch.cuda.is_available() else "cpu"
 
+def ComplexLoss(lossfunction, out, y):
+    out_= torch.stack((torch.real(out), torch.imag(out)), dim=0)
+    y_ = torch.stack((torch.real(y), torch.imag(y)), dim=0)
+    loss = lossfunction(out_, y_)
+    return loss
+
+
+
+
 class OptimizedFilterModel(pl.LightningModule):
-    def __init__(self, lr,  len_cut = 1000) -> None:
+    def __init__(self, lr, num_classes, len_cut = 1000) -> None:
         super(OptimizedFilterModel, self).__init__()
         self.conv_layer = ParametricConvLayer()
         self.downsampler = DownsamplerRemove( len = len_cut)
-        self.lossfunction = nn.NLLLoss()
-        self.loss_vect = []
+        self.lossfunction = nn.CrossEntropyLoss()
         self.lr = lr
         self.train_acc_tensor, self.val_acc_tensor, self.test_acc_tensor = [], [], []
-        self.accuracy_metric = torchmetrics.Accuracy(task="multiclass", num_classes = 16)
+        self.accuracy_metric = torchmetrics.Accuracy(task="multiclass", num_classes = num_classes)
 
+    def forward(self, x):
+        x = self.conv_layer(x)
+        x = self.downsampler(x)
+        return x
+    
     def training_step(self, batch, batch_idx):
         x, y = batch
         x = torch.unsqueeze(x, dim = 1)
         out = self.forward(x)
-        loss_real = self.lossfunction(torch.real(out), torch.real(y))
-        loss_imag = self.lossfunction(torch.imag(out), torch.imag(y))
-        self.log("train_loss_epoch_real",  loss_real, on_epoch=True, prog_bar=True)
-        self.log("train_loss_epoch_imag",  loss_imag, on_epoch=True, prog_bar=True)
-        loss = torch.abs(torch.complex(loss_real, loss_imag))
-        self.log("train_loss", loss, on_epoch=True)
-        acc_real = self.accuracy_metric(torch.real(out), torch.real(y))
-        acc_imag = self.accuracy_metric(torch.imag(out), torch.imag(y))
-        self.log("train_acc_epoch_real",  acc_real, on_epoch=True, prog_bar=True)
-        self.log("train_acc_epoch_imag",  acc_imag, on_epoch=True, prog_bar=True)
-        self.train_acc_tensor.append(torch.abs(torch.complex(acc_real, acc_imag)))
+        out_= torch.stack((torch.real(out), torch.imag(out)), dim=0)
+        y_ = torch.stack((torch.real(y), torch.imag(y)), dim=0)
+        loss = self.lossfunction(out_, y_)
+        acc = self.accuracy_metric(out_, y_)
+        self.log("train_acc_epoch",  acc, on_epoch=True, prog_bar=True)
+        self.train_acc_tensor.append(acc)
+        # max_norm = 1.0 
+        # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm)
         return loss
     
     def validation_step(self, batch, batch_idx):
         x, y = batch
         x = torch.unsqueeze(x, dim = 1)
         out = self.forward(x)
-        loss_real = self.lossfunction(torch.real(out), torch.real(y))
-        loss_imag = self.lossfunction(torch.imag(out), torch.imag(y))
-        loss = torch.abs(torch.complex(loss_real, loss_imag))
-        self.log("val_loss", loss, on_epoch=True)
-        acc_real = self.accuracy_metric(torch.real(out), torch.real(y))
-        acc_imag = self.accuracy_metric(torch.imag(out), torch.imag(y))
-        self.log("val_acc_epoch_real",  acc_real, on_epoch=True, prog_bar=True)
-        self.log("val_acc_epoch_imag",  acc_imag, on_epoch=True, prog_bar=True)
-        abs_val = torch.abs(torch.complex(acc_real, acc_imag))
-        self.val_acc_tensor.append(abs_val)
+        out_= torch.stack((torch.real(out), torch.imag(out)), dim=0)
+        y_ = torch.stack((torch.real(y), torch.imag(y)), dim=0)
+        loss = self.lossfunction(out_, y_)
+        acc = self.accuracy_metric(out_, y_)
+        self.log("val_acc_epoch",  acc, on_epoch=True, prog_bar=True)
+        self.val_acc_tensor.append(acc)
         return loss
     
     def test_step(self, batch, batch_idx):
         x, y = batch
         x = torch.unsqueeze(x, dim = 1)
         out = self.forward(x)
-        loss_real = self.lossfunction(torch.real(out), torch.real(y))
-        loss_imag = self.lossfunction(torch.imag(out), torch.imag(y))
-        loss = torch.abs(torch.complex(loss_real, loss_imag))
-        acc_real = self.accuracy_metric(torch.real(out), torch.real(y))
-        acc_imag = self.accuracy_metric(torch.imag(out), torch.imag(y))
-        self.test_acc_tensor.append(torch.abs(torch.complex(acc_real, acc_imag)))
+        out_= torch.stack((torch.real(out), torch.imag(out)), dim=0)
+        y_ = torch.stack((torch.real(y), torch.imag(y)), dim=0)
+        loss = self.lossfunction(out_, y_)
+        acc = self.accuracy_metric(out_, y_)
+        self.test_acc_tensor.append(acc)
         return loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr = self.lr)
         return optimizer
     
-    def forward(self, x):
-        x = self.conv_layer(x)
-        x = self.downsampler(x)
-        return x
+
 
 
 class DownsamplerRemove(pl.LightningModule):
@@ -102,11 +107,12 @@ class DownsamplerRemove(pl.LightningModule):
         return torch.stack(output_data, axis=0)
     
 
-class ParametricConvLayer( nn.Module, Processor):
+class ParametricConvLayer(nn.Module, Processor):
 
     def __init__(self, parameter_version = 1, name = "Optimized Filter"):
         super(ParametricConvLayer, self).__init__()
         self.version = parameter_version
+        self.name = name
         self.param = self.load_parameters()
         self.parameter = nn.Parameter(self.param, requires_grad = True)
 
@@ -145,3 +151,28 @@ class ParametricConvLayer( nn.Module, Processor):
         """Convolutes the input data with the parameters of the filter"""
         output_data = self.conv(input_data, self.parameter)
         return output_data
+
+
+class Symbol_detection(pl.LightningModule, nn.Module, Modulator):
+
+    def __init__(self,  M = 16):
+        super().__init__()
+        self.M = M
+        self.normalized = True
+        constellation = self.constellation().to(device)      
+        self.alphabet_real = torch.real(constellation).to(device)
+        self.alphabet_imag = torch.imag(constellation).to(device)
+        l = self.alphabet_real.size()
+        self.sigma = nn.Parameter(torch.ones(l)*0.3, requires_grad=True)
+
+    def forward(self, input_data):
+        output_data = []
+        for sample in input_data:
+            x_0 = torch.real(sample).t().to(device)
+            x_1 = torch.imag(sample).t().to(device)
+            error =(x_0[:,None] - self.alphabet_real[None,:])**2 +  (x_1[:, None] - self.alphabet_imag[None, :]) ** 2
+            detected_out = -(1/self.sigma**2).to(device) * error.to(device)
+            output_data.append(detected_out)
+        output_data = torch.stack(output_data)
+        return output_data
+

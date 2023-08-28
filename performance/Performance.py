@@ -1,5 +1,7 @@
 import torch 
 from OpticalChain import simulate_chain_get_data
+import pandas as pd 
+import matplotlib.pyplot as plt
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -12,21 +14,28 @@ class Performance():
         self.Nb = Nb
         self.parameters = []
 
-    def Monte_Carlo(self, parameters, N_trials):
+    def run_Monte_Carlo_simulations(self, parameters, N_trials):
         snr_range = range(self.osnr[0], self.osnr[1]+1)
         ber = []
         for SNR in snr_range:
             ber_trial = []
             print('I am making simulations for SNR == {}'.format(SNR))
             for _ in range(N_trials):
-                input_data, output_data, symb_input, symb_output = simulate_chain_get_data(parameters)
+                input_data, input_net, targets, output_data = simulate_chain_get_data(parameters)
                 binary = Binary(self.M, input_data, output_data, False, 'BER')
                 BER = binary.compute_ber()
                 ber_trial.append(BER)
             ber_trial_snr = torch.mean(torch.tensor(ber_trial))
             ber.append(ber_trial_snr)
             print('For SNR final == {} the BER is {}'.format(SNR, ber_trial_snr))
+        self.ber = ber
         return snr_range, ber
+
+    def save_results(self, model_name, version):
+        ber = pd.DataFrame(torch.transpose(self.ber, -1, 0))
+        ber.to_csv(f'.{model_name}_v{version}/evaluation_ber/ber_{model_name}_v{version}.csv', index=False)
+
+
 
 class Binary:
     def __init__(self, M, input=None, output=None, name="BER"):

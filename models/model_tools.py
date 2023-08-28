@@ -44,11 +44,10 @@ class TrainModel():
     def train_model(self, min_epochs, max_epochs, debug, logger):
         self.trainer = pl.Trainer( devices="auto", accelerator="auto", min_epochs = min_epochs, max_epochs = max_epochs, 
                                    log_every_n_steps=10, logger = logger,
-                                   callbacks=[EarlyStopping(monitor = "train_loss")], fast_dev_run=debug, check_val_every_n_epoch=3)
-        self.trainer.fit(self.model, self.dataset.train_dataloader(),self.dataset.val_dataloader())
+                                   callbacks=[EarlyStopping(monitor = "train_acc_epoch")], fast_dev_run=debug)
+        self.trainer.fit(self.model, self.dataset.train_dataloader())
         self.trainer.validate(self.model, self.dataset.val_dataloader(), verbose=True)
         self.trainer.test(self.model, self.dataset.test_dataloader())
-        self.loss_vect = getattr(self.model, 'loss_vect')
         print(pl.utilities.model_summary.summarize(self.model, max_depth=1))
         return self.model.parameters()
     
