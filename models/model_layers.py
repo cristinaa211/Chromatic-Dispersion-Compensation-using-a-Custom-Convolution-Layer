@@ -1,11 +1,11 @@
-from typing import Any
+
 import pytorch_lightning as pl
 import torch 
 from chain_layers.Processors import Processor
 import torch.nn as nn 
 import pandas as pd 
 import torchmetrics 
-from chain_layers.Modulators import Demodulator, Modulator
+from chain_layers.Modulators import  Modulator
 import os
 
 device = 'cuda' if torch.cuda.is_available() else "cpu"
@@ -17,17 +17,15 @@ def ComplexLoss(lossfunction, out, y):
     return loss
 
 
-
-
-class OptimizedFilterModel(pl.LightningModule):
-    def __init__(self, lr, num_classes, len_cut = 1000) -> None:
+class OptimizedFilterModel(pl.LightningModule, Processor):
+    def __init__(self, lr = 1e-5,  len_cut = 1000, name = 'TrainedModel') -> None:
         super(OptimizedFilterModel, self).__init__()
+        self.lr = lr
+        self.name = name
         self.conv_layer = ParametricConvLayer()
         self.downsampler = DownsamplerRemove( len = len_cut)
+        # self.detection_layer = SymbolDetection()
         self.lossfunction = nn.CrossEntropyLoss()
-        self.lr = lr
-        self.train_acc_tensor, self.val_acc_tensor, self.test_acc_tensor = [], [], []
-        self.accuracy_metric = torchmetrics.Accuracy(task="multiclass", num_classes = num_classes)
 
     def forward(self, x):
         x = self.conv_layer(x)
@@ -41,11 +39,7 @@ class OptimizedFilterModel(pl.LightningModule):
         out_= torch.stack((torch.real(out), torch.imag(out)), dim=0)
         y_ = torch.stack((torch.real(y), torch.imag(y)), dim=0)
         loss = self.lossfunction(out_, y_)
-        acc = self.accuracy_metric(out_, y_)
-        self.log("train_acc_epoch",  acc, on_epoch=True, prog_bar=True)
-        self.train_acc_tensor.append(acc)
-        # max_norm = 1.0 
-        # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm)
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -55,9 +49,7 @@ class OptimizedFilterModel(pl.LightningModule):
         out_= torch.stack((torch.real(out), torch.imag(out)), dim=0)
         y_ = torch.stack((torch.real(y), torch.imag(y)), dim=0)
         loss = self.lossfunction(out_, y_)
-        acc = self.accuracy_metric(out_, y_)
-        self.log("val_acc_epoch",  acc, on_epoch=True, prog_bar=True)
-        self.val_acc_tensor.append(acc)
+        self.log("val_loss", loss, prog_bar=True, on_epoch=True)
         return loss
     
     def test_step(self, batch, batch_idx):
@@ -67,18 +59,14 @@ class OptimizedFilterModel(pl.LightningModule):
         out_= torch.stack((torch.real(out), torch.imag(out)), dim=0)
         y_ = torch.stack((torch.real(y), torch.imag(y)), dim=0)
         loss = self.lossfunction(out_, y_)
-        acc = self.accuracy_metric(out_, y_)
-        self.test_acc_tensor.append(acc)
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr = self.lr)
+        optimizer = torch.optim.Adam(self.conv_layer.parameters(), lr = self.lr)
         return optimizer
-    
-
-
 
 class DownsamplerRemove(pl.LightningModule):
+    """Downsamples by a downsampling factor "os" and removes the filter delays in the data to a length of "len" """
 
     def __init__(self,  len = '', os=2, name="Downsampler"):
         super(DownsamplerRemove,self).__init__()
@@ -107,18 +95,23 @@ class DownsamplerRemove(pl.LightningModule):
         return torch.stack(output_data, axis=0)
     
 
-class ParametricConvLayer(nn.Module, Processor):
+class ParametricConvLayer(pl.LightningModule, nn.Module, Processor):
 
-    def __init__(self, parameter_version = 1, name = "Optimized Filter"):
+    def __init__(self, filename = None, original = True, parameter_version = 1, name = "Optimized Filter"):
         super(ParametricConvLayer, self).__init__()
         self.version = parameter_version
+        self.filename = filename
+        self.original  = original
         self.name = name
-        self.param = self.load_parameters()
-        self.parameter = nn.Parameter(self.param, requires_grad = True)
+        self.param = self.load_parameters().to(device)
+        self.parameter = nn.Parameter(self.param, requires_grad = True, )
 
     def load_parameters(self):
         """Loads the parameters of the optimized filter"""
-        filename = rf"./models/optimized_filter_{self.version}.csv"
+        if self.original == True:
+            filename = rf"./models/csv/optimized_filter_{self.version}.csv"
+        else:
+            filename = self.filename
         df = pd.read_csv(filename)
         params = torch.flatten(torch.tensor(df.to_numpy(dtype=complex)))
         return params
@@ -147,13 +140,13 @@ class ParametricConvLayer(nn.Module, Processor):
         return out
 
 
-    def forward(self, input_data):
+    def forward(self, x):
         """Convolutes the input data with the parameters of the filter"""
-        output_data = self.conv(input_data, self.parameter)
+        output_data = self.conv(x, self.parameter)
         return output_data
 
 
-class Symbol_detection(pl.LightningModule, nn.Module, Modulator):
+class SymbolDetection(pl.LightningModule, nn.Module, Modulator):
 
     def __init__(self,  M = 16):
         super().__init__()

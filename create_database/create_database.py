@@ -9,7 +9,7 @@ def create_dataset(snr_range, parameters, no_trials, database_config):
     for snr in snr_range:
         parameters['SNR'] = snr
         for _ in range(no_trials):
-            input_data, input_net, targets, output_data= simulate_chain_get_data(parameters)
+            input_data, input_net, targets, output_data = simulate_chain_get_data(parameters = parameters)
             input_net_real = np.real(input_net.numpy())
             input_net_imag = np.imag(input_net.numpy())
             targets_real = np.real(targets.numpy())
@@ -29,3 +29,7 @@ def count_unique_numbers(list_of_lists):
     unique_numbers = set(flat_list)
     unique_count = len(unique_numbers)
     return unique_numbers, unique_count
+    
+
+
+        	
