@@ -166,7 +166,7 @@ def evaluate_model(model_name, version, parameters, M = 16, osnr = [0, 20], n_tr
     plt.ylim([1e-6, 0.0])
     plt.xlim([0.0, 20])
     plt.title(f"{model_name}_v{version}")
-    plt.savefig(f'./binaries_models/{model_name}_v{version}/evaluation_ber/{model_name}_v{version}.png')
+    plt.savefig(f'./binaries_models/{model_name}_v{version}/evaluation_ber/{model_name}_v{version}_{n_trials}trials.png')
     plt.show()
 
 
