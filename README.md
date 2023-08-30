@@ -52,26 +52,21 @@ The final set of hyperparameters used is: {learning rate : 1e-5, batch size : 2,
 
 **Model architecture**
 
-![someimage](https://github.com/cristinaa211/Chromatic-Dispersion-Compensation-using-a-Custom-Convolution-Layer/assets/61435903/dea30325-436a-440c-81b0-daf4ff6bf097
-
-
 The model's architecture is the following: 
 
-a ParametricConvolutionLayer, whose coefficients are complex numbers, composed of 4 convolution layers
+- ParametricConvolutionLayer, whose coefficients are complex numbers, composed of 4 convolution layers
 
-a DownsamplerRemove layer, having the role of downsampling by a factor of 2 and to remove the filter's delays
+- DownsamplerRemove layer, having the role of downsampling by a factor of 2 and to remove the filter's delays
 
-The loss function is Cross-Entropy Loss
+- Cross-Entropy Loss Function
 
- The optimizer is Adam optimizer
+- Adam optimizer
 
-Given the filter's cofficients that we want to update, which are complex numbers, the ParametricConvolutionLayer is composed of 4 1d convolution layers. It's paramteres are initialized using the optimized filter's coefficients values. 
 
 ![Screenshot from 2023-08-29 19-13-31](https://github.com/cristinaa211/Chromatic-Dispersion-Compensation-using-a-Custom-Convolution-Layer/assets/61435903/e35c8ec1-1679-42f2-b31f-bde2a59a4792)
 
 **Results** 
 
-The final metric that we want to evaluate our model is Bit Error Rate, which will be the number of error bits divided by the number of transmitted bits. Thus Monte Carlo simulations are done, where data are generated and passed in the optical chain, having as Chromatic Dispersion compensation layer the trained model. 
-
+The final metric that we want to evaluate our model on is the Bit Error Rate, which will be the number of error bits divided by the number of transmitted bits. Data is generated and passed in the optical chain, having as Chromatic Dispersion compensation layer the trained model, where the signal to noise ratio takes values between 0 and 2. 1000 Monte Carlo simulations are done for each SNR value. For each SNR value, there are 1000 computed BER values, so the final BER for each SNR value will the mean of the computed BERs. The results are compared to the ber computed when the initial optimized filter is used in the optical chain, for the same parameters. 
 
 ![optimizedFilter_v1 2](https://github.com/cristinaa211/Chromatic-Dispersion-Compensation-using-a-Custom-Convolution-Layer/assets/61435903/988f21ab-0d04-4cf1-9403-dac11e04211b)
