@@ -176,6 +176,27 @@ def export_optmized_filter(filename = None, plot = False):
     himp = torch.flatten(himp).cpu()
     return himp
 
+
+def plot_filter_coeffs(himp):
+    real_h = himp.real
+    imag_h = himp.imag
+    abs_h = abs(himp)
+    fig, axes = plt.subplots(3)
+    axes[0].plot(real_h)
+    axes[0].set(xlabel='n_th tap', ylabel='Magnitude')
+    axes[0].set_title('Real parts of h_hat')
+    axes[1].plot(imag_h)
+    axes[1].set(xlabel='n_th tap', ylabel='Magnitude')
+    axes[1].set_title('Imaginary parts of h_hat')
+    axes[2].plot(abs_h)
+    axes[2].set(xlabel='n_th tap', ylabel='Magnitude')
+    axes[2].set_title('Absolute values of h_hat')
+    plt.show()
+
+
+
+
+
 if __name__ == "__main__":
     fir_cd_comp_imp_resp(Fs = 21.4e9,D = 17e-3,Lambda=1553e-9, L=4000, 
                             omega_1 =-torch.pi , omega_2 = torch.pi, zeta = 1e-14, Nc = None, plot=True)

@@ -26,5 +26,52 @@ which will be convoluted with a SRRC filter:
 
 **Dataset**
 
-The purpose is to train a Deep Neural Network to compensate the chromatic dispersion. The parameters that will be updated are the optimized filter's coefficients. The layer responsible for this will be ParametricConvolutionLayer in the network. 
+The purpose is to train a Deep Neural Network to compensate the chromatic dispersion. The parameters that will be updated are the filter's coefficients. The layer responsible for this will be ParametricConvolutionLayer in the network. The dataset is created by generating random data in the optical chain. The network's targets will be the data recovered just after the modulation process, in the emitter side, and the data fed to the optimized filter, as input data. All our data represent complex numbers.
 
+The parameters of the optical chain are the following:                         
+parameters = {'order' : ['cd', 'eval'], 'Nb' : 1000 , 'type' : 'QAM', 'M' : 16, 'ovs_factor' : 2, 'fiber_length' : 4000, 'Fs' : 21.4e9, 'wavelength' : 1553e-9, 'SNR' : 15, 'plot' : False } where: 
+
+order           (list) : the layers present in the optical chain, default ['cd', 'srrc']
+Nb               (int) : the length of the input generated data , default 1000
+mod_type      (string) : the type of the modulation, default 'QAM'
+M                (int) : the order of the modulation scheme (M distinct symbols in the constellation diagram), default 16
+ovs_factor       (int) : the oversampling factor, default 2
+fiber_length     (int) : the length of the fiber, default 4000
+Fs             (float) : the sampling rate, default 21.4e9
+wavelength     (float) : the wavelength of the signal, default 1553e-9
+SNR              (int) : the signal to noise ratio expressed in dBm , default 20
+plot         (boolean) : if True, then display the received constellation, default False
+
+ The dataset is stored in a PostreSQL database. 
+
+
+**Model training**
+
+The targets will be further split in real and imaginary parts, encoded to values in [0,1, 2, 3, 4], representing the class indices. The dataset is split in training, validation and test sets. 
+The final set of hyperparameters used is: {learning rate : 1e-5, batch size : 2, min epochs : 30}
+
+**Model architecture**
+
+
+![![Alt](https://) text](image.png)
+
+
+The model's architecture is the following: 
+
+a ParametricConvolutionLayer, whose coefficients are complex numbers, composed of 4 convolution layers
+
+a DownsamplerRemove layer, having the role of downsampling by a factor of 2 and to remove the filter's delays
+
+The loss function is Cross-Entropy Loss
+
+ The optimizer is Adam optimizer
+
+Given the filter's cofficients that we want to update, which are complex numbers, the ParametricConvolutionLayer is composed of 4 1d convolution layers. It's paramteres are initialized using the optimized filter's coefficients values. 
+
+![Alt text](<figures/Screenshot from 2023-08-29 19-13-31.png>)
+
+**Results** 
+
+The final metric that we want to evaluate our model is Bit Error Rate, which will be the number of error bits divided by the number of transmitted bits. Thus Monte Carlo simulations are done, where data are generated and passed in the optical chain, having as Chromatic Dispersion compensation layer the trained model. 
+
+![Alt text](binaries_models/optimizedFilter_v1.2/evaluation_ber/optimizedFilter_v1.2.png)

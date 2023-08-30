@@ -13,3 +13,5 @@ optimized_filter_1.csv
 binaries_models
 lightning_logs
 tensorboard
+.vscode 
+__pycache__

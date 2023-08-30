@@ -120,6 +120,7 @@ def prepare_dataset_detect(database_config):
 
 
 def prepare_dataset(database_config):
+    """Extracts data from the database and return the input data and the targets"""
     header, data = postgresql_operations.read_table_postgresql(columns="input_net_real, input_net_imag, targets_real, targets_imag",
                                                                limit = None, table_name="qam16_cd_optimized_filter", database_config=database_config)
     data_df = pd.DataFrame(data, columns=header)
@@ -136,6 +137,7 @@ def prepare_dataset(database_config):
     
     
 def train_model_(input_data, targets, model_name, version, batch_size, min_epochs, max_epochs, lr ):
+    """Creates a CustomDataLoader from input data and targets, instantiates a OptimizedFilterModel model, trains and saves the model's parameters"""
     log_dir = f"./binaries_models/{model_name}_v{version}/"
     try: os.mkdir(log_dir)
     except:pass
@@ -150,7 +152,14 @@ def train_model_(input_data, targets, model_name, version, batch_size, min_epoch
     return trainer
 
 def evaluate_model(model_name, version, parameters, M = 16, osnr = [0, 20], n_trials = 1000):
+    """
+    Evaluates the model's parameters on the final metric: Bit Error Rate. 
+    It performs Monte Carlo simulations, where the data is tranmistted in the optical chain.
+    It compares visually with the BER computed using the reference filter in the optical chain.
+    """
     try: modelpath = f"./binaries_models/{model_name}_v{version}/{model_name}_v{version}.pkl"
+    except: pass
+    try: os.mkdir(f"./binaries_models/{model_name}_v{version}/evaluation_ber")
     except: pass
     reference_ber = f"./binaries_models/original_v1.0/evaluation_ber/ber_original_v1.0.csv"
     ref_ber_df = pd.read_csv(reference_ber)
@@ -183,6 +192,5 @@ def plot_results(fileame):
     plt.ylim([1e-6, 0.0])
     plt.xlim([0.0, 20])
     plt.show()
-    #plt.savefig(f'./binaries_models/{model_name}_v{version}/evaluation_ber/{model_name}_v{version}.jpg')
 
 

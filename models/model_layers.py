@@ -4,9 +4,6 @@ import torch
 from chain_layers.Processors import Processor
 import torch.nn as nn 
 import pandas as pd 
-import torchmetrics 
-from chain_layers.Modulators import  Modulator
-import os
 
 device = 'cuda' if torch.cuda.is_available() else "cpu"
 
@@ -143,29 +140,5 @@ class ParametricConvLayer(pl.LightningModule, nn.Module, Processor):
     def forward(self, x):
         """Convolutes the input data with the parameters of the filter"""
         output_data = self.conv(x, self.parameter)
-        return output_data
-
-
-class SymbolDetection(pl.LightningModule, nn.Module, Modulator):
-
-    def __init__(self,  M = 16):
-        super().__init__()
-        self.M = M
-        self.normalized = True
-        constellation = self.constellation().to(device)      
-        self.alphabet_real = torch.real(constellation).to(device)
-        self.alphabet_imag = torch.imag(constellation).to(device)
-        l = self.alphabet_real.size()
-        self.sigma = nn.Parameter(torch.ones(l)*0.3, requires_grad=True)
-
-    def forward(self, input_data):
-        output_data = []
-        for sample in input_data:
-            x_0 = torch.real(sample).t().to(device)
-            x_1 = torch.imag(sample).t().to(device)
-            error =(x_0[:,None] - self.alphabet_real[None,:])**2 +  (x_1[:, None] - self.alphabet_imag[None, :]) ** 2
-            detected_out = -(1/self.sigma**2).to(device) * error.to(device)
-            output_data.append(detected_out)
-        output_data = torch.stack(output_data)
         return output_data
 

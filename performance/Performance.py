@@ -39,8 +39,6 @@ class Performance():
         except: pass
         self.ber_df.to_csv(f'./binaries_models/{model_name}_v{version}/evaluation_ber/ber_{model_name}_v{version}.csv', index=False)
 
-
-
 class BitErrorRate:
     def __init__(self, M = 16, input=None, output=None, name="BER"):
         self.M = M

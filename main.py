@@ -18,16 +18,18 @@ if __name__ == "__main__":
                         'password': ''
                         }
     parameters = {
-                'order' : ['cd', 'eval'], 'Nb' : 5000 , 'type' : 'QAM', 'M' : 16,
+                'order' : ['cd', 'eval'], 'Nb' : 1000 , 'type' : 'QAM', 'M' : 16,
                 'ovs_factor' : 2, 'fiber_length' : 4000,
                 'Fs' : 21.4e9, 'wavelength' : 1553e-9, 'SNR' : 15,
-                'plot' : False }
+                'plot' : True }
     
     batch_size, lr = 2, 1e-5
     min_epochs , max_epochs = 30, 120
     model_name, version = "optimizedFilter" ,  1.1
     input_data, targets  = prepare_dataset(database_config)
     train_model_(input_data, targets, model_name, version, batch_size, min_epochs, max_epochs , lr) 
-    evaluate_model(model_name, version, parameters, n_trials = 2000)
+    evaluate_model(model_name, version, parameters, n_trials = 3000)
+
+
 
     

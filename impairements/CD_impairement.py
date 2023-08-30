@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class ChromaticDispersion(nn.Module, Processor):
+    """Simulates Chromatic Dispersion impairement"""
     
     def __init__(self,D,L,Lambda,fs, name = 'CD impairement'):
         super(ChromaticDispersion, self).__init__()
