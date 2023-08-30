@@ -52,8 +52,7 @@ The final set of hyperparameters used is: {learning rate : 1e-5, batch size : 2,
 
 **Model architecture**
 
-
-![![Alt](https://) text](image.png)
+![someimage](https://github.com/cristinaa211/Chromatic-Dispersion-Compensation-using-a-Custom-Convolution-Layer/assets/61435903/dea30325-436a-440c-81b0-daf4ff6bf097
 
 
 The model's architecture is the following: 
@@ -68,10 +67,11 @@ The loss function is Cross-Entropy Loss
 
 Given the filter's cofficients that we want to update, which are complex numbers, the ParametricConvolutionLayer is composed of 4 1d convolution layers. It's paramteres are initialized using the optimized filter's coefficients values. 
 
-![Alt text](<figures/Screenshot from 2023-08-29 19-13-31.png>)
+![Screenshot from 2023-08-29 19-13-31](https://github.com/cristinaa211/Chromatic-Dispersion-Compensation-using-a-Custom-Convolution-Layer/assets/61435903/e35c8ec1-1679-42f2-b31f-bde2a59a4792)
 
 **Results** 
 
 The final metric that we want to evaluate our model is Bit Error Rate, which will be the number of error bits divided by the number of transmitted bits. Thus Monte Carlo simulations are done, where data are generated and passed in the optical chain, having as Chromatic Dispersion compensation layer the trained model. 
 
-![Alt text](binaries_models/optimizedFilter_v1.2/evaluation_ber/optimizedFilter_v1.2.png)
+
+![optimizedFilter_v1 2](https://github.com/cristinaa211/Chromatic-Dispersion-Compensation-using-a-Custom-Convolution-Layer/assets/61435903/988f21ab-0d04-4cf1-9403-dac11e04211b)
