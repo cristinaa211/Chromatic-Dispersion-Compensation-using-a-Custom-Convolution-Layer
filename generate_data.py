@@ -12,8 +12,8 @@ if __name__ == "__main__":
 		        'host': 'localhost',
 		        'port': 5432,
 		        'dbname': 'OpticalData',
-		        'user': 'cristina',
-		        'password': 'cristina'
+		        'user': '',
+		        'password': ''
 		        }
     snr_range = range(0, 21)
     create_dataset(snr_range, parameters, 500, database_config)
