@@ -14,8 +14,8 @@ if __name__ == "__main__":
                         'host': 'localhost',
                         'port': 5432,
                         'dbname': 'OpticalData',
-                        'user': 'cristina',
-                        'password': 'cristina'
+                        'user': '',
+                        'password': ''
                         }
     parameters = {
                 'order' : ['cd', 'eval'], 'Nb' : 5000 , 'type' : 'QAM', 'M' : 16,
