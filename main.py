@@ -26,8 +26,8 @@ if __name__ == "__main__":
     batch_size, lr = 2, 1e-5
     min_epochs , max_epochs = 30, 120
     model_name, version = "optimizedFilter" ,  1.1
-    # input_data, targets  = prepare_dataset(database_config)
-    # train_model_(input_data, targets, model_name, version, batch_size, min_epochs, max_epochs , lr) 
+    input_data, targets  = prepare_dataset(database_config)
+    train_model_(input_data, targets, model_name, version, batch_size, min_epochs, max_epochs , lr) 
     evaluate_model(model_name, version, parameters, n_trials = 2000)
 
     
